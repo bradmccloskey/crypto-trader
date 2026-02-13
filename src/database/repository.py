@@ -86,14 +86,27 @@ class Repository:
     # ── Daily Performance ────────────────────────────────────────────
 
     def save_daily_performance(self, date_str: str, data: dict):
+        # Map summary keys to DailyPerformance column names
+        mapped = {
+            "starting_capital": data.get("starting_capital"),
+            "ending_capital": data.get("capital"),
+            "trades_count": data.get("total_trades", 0),
+            "wins": data.get("wins", 0),
+            "losses": data.get("losses", 0),
+            "realized_pnl": data.get("realized_pnl", 0),
+            "unrealized_pnl": data.get("unrealized_pnl", 0),
+            "max_drawdown": data.get("max_drawdown", 0),
+        }
+        # Drop None values so defaults apply
+        mapped = {k: v for k, v in mapped.items() if v is not None}
+
         with self.Session() as session:
             existing = session.query(DailyPerformance).filter_by(date=date_str).first()
             if existing:
-                for k, v in data.items():
-                    if hasattr(existing, k):
-                        setattr(existing, k, v)
+                for k, v in mapped.items():
+                    setattr(existing, k, v)
             else:
-                entry = DailyPerformance(date=date_str, **data)
+                entry = DailyPerformance(date=date_str, **mapped)
                 session.add(entry)
             session.commit()
 

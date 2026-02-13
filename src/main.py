@@ -235,17 +235,21 @@ class TradingBot:
 
     def _daily_summary(self):
         """Send daily performance summary."""
-        prices = {}
-        for pid in self.portfolio.positions:
-            try:
-                prices[pid] = self.market_data.get_current_price(pid)
-            except Exception:
-                pass
+        try:
+            prices = {}
+            for pid in self.portfolio.positions:
+                try:
+                    prices[pid] = self.market_data.get_current_price(pid)
+                except Exception:
+                    pass
 
-        summary = self.portfolio.summary(prices)
-        self.sms.daily_summary(summary)
-        self.repo.save_daily_performance(str(date.today()), summary)
-        log.info(f"Daily summary: {summary}")
+            summary = self.portfolio.summary(prices)
+            self.sms.daily_summary(summary)
+            self.repo.save_daily_performance(str(date.today()), summary)
+            log.info(f"Daily summary: {summary}")
+        except Exception as e:
+            log.error(f"Daily summary failed: {e}")
+            self.sms.error(f"Daily summary save failed: {e}")
 
 
 def main():
