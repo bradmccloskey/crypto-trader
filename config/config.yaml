@@ -1,0 +1,56 @@
+# Crypto Trading Bot Configuration
+
+bot:
+  mode: paper  # paper or live
+  loop_interval_seconds: 60
+  daily_summary_hour: 20  # 8 PM
+
+trading_pairs:
+  - ETH-USD
+  - SOL-USD
+  - AVAX-USD
+  - DOGE-USD
+  - ADA-USD
+  - XRP-USD
+  - DOT-USD
+
+protected_assets:
+  - SHIB
+  - BTC
+
+indicators:
+  rsi:
+    period: 14
+    oversold: 20     # very oversold = high conviction entries
+    overbought: 70
+  ema:
+    fast: 12
+    slow: 26
+  bollinger:
+    period: 20
+    std_dev: 2
+  volume:
+    period: 20
+    multiplier: 2.5  # require 2.5x average volume
+
+strategy:
+  min_confirmations: 3  # minimum indicators agreeing for a signal
+  candle_granularity: ONE_HOUR  # Coinbase granularity
+  lookback_candles: 100  # candles to fetch for indicator calculation
+
+risk:
+  max_position_pct: 0.02        # 2% of capital per trade
+  max_open_positions: 3
+  daily_loss_limit_pct: 0.05    # 5% of capital
+  daily_loss_limit_usd: 15.0    # whichever hit first
+  stop_loss_pct: 0.015          # 1.5% stop-loss (cut losses fast)
+  take_profit_pct: 0.08         # 8% take-profit (let big winners run)
+  trailing_stop_activate_pct: 0.02  # activate trailing at 2% gain
+  trailing_stop_distance_pct: 0.008 # trail by 0.8% (lock in gains tight)
+
+capital:
+  initial_usd: 300.0  # starting allocation for trading
+
+data:
+  cache_dir: data/cache
+  db_path: data/trading.db

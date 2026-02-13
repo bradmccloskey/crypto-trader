@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.crypto-trader.bot</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/claude/projects/crypto-trader/venv/bin/python</string>
+        <string>-m</string>
+        <string>src.main</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/claude/projects/crypto-trader</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/claude/projects/crypto-trader/logs/bot-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/claude/projects/crypto-trader/logs/bot-stderr.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/claude/.local/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/claude</string>
+    </dict>
+</dict>
+</plist>
