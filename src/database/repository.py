@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
-from src.database.models import DailyPerformance, SignalLog, Trade
+from src.database.models import DailyPerformance, GridOrder, SignalLog, Trade
 from src.portfolio.portfolio_manager import ClosedTrade
 from src.strategy.signal_generator import Signal
 from src.utils.logger import setup_logger
@@ -118,3 +118,61 @@ class Repository:
                 .limit(days)
                 .all()
             )
+
+    # ── Grid Orders ───────────────────────────────────────────────────
+
+    def save_grid_order(self, product_id: str, side: str, level_price: float,
+                        base_size: float, order_id: str, grid_center: float,
+                        level_index: int, paper: bool, status: str = "open") -> int:
+        with self.Session() as session:
+            order = GridOrder(
+                product_id=product_id,
+                side=side,
+                level_price=level_price,
+                base_size=base_size,
+                order_id=order_id,
+                grid_center=grid_center,
+                level_index=level_index,
+                paper=1 if paper else 0,
+                status=status,
+            )
+            session.add(order)
+            session.commit()
+            log.debug(f"Saved grid order #{order.id} {side} {product_id} @ ${level_price:.4f}")
+            return order.id
+
+    def fill_grid_order(self, order_id: str, fill_price: float, pnl: float = 0.0):
+        with self.Session() as session:
+            order = session.query(GridOrder).filter_by(order_id=order_id, status="open").first()
+            if order:
+                order.status = "filled"
+                order.fill_price = fill_price
+                order.pnl = pnl
+                order.filled_at = datetime.now(timezone.utc)
+                session.commit()
+
+    def cancel_grid_orders(self, product_id: str):
+        with self.Session() as session:
+            orders = session.query(GridOrder).filter(
+                GridOrder.product_id == product_id,
+                GridOrder.status == "open"
+            ).all()
+            for order in orders:
+                order.status = "cancelled"
+            session.commit()
+            log.debug(f"Cancelled {len(orders)} grid orders for {product_id}")
+
+    def get_open_grid_orders(self, product_id: str = None) -> list[GridOrder]:
+        with self.Session() as session:
+            q = session.query(GridOrder).filter_by(status="open")
+            if product_id:
+                q = q.filter_by(product_id=product_id)
+            return q.all()
+
+    def get_grid_pnl(self, product_id: str = None) -> float:
+        with self.Session() as session:
+            q = session.query(GridOrder).filter_by(status="filled")
+            if product_id:
+                q = q.filter_by(product_id=product_id)
+            orders = q.all()
+            return sum(o.pnl or 0 for o in orders)

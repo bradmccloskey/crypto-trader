@@ -6,12 +6,12 @@
     <string>com.crypto-trader.bot</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/claude/projects/crypto-trader/venv/bin/python</string>
+        <string>/Users/claude/projects/investment/crypto-trader/venv/bin/python</string>
         <string>-m</string>
         <string>src.main</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/claude/projects/crypto-trader</string>
+    <string>/Users/claude/projects/investment/crypto-trader</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
@@ -19,9 +19,9 @@
     <key>ThrottleInterval</key>
     <integer>10</integer>
     <key>StandardOutPath</key>
-    <string>/Users/claude/projects/crypto-trader/logs/bot-stdout.log</string>
+    <string>/Users/claude/projects/investment/crypto-trader/logs/bot-stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/claude/projects/crypto-trader/logs/bot-stderr.log</string>
+    <string>/Users/claude/projects/investment/crypto-trader/logs/bot-stderr.log</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>

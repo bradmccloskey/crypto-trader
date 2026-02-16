@@ -2,6 +2,7 @@
 
 bot:
   mode: paper  # paper or live
+  strategy: both  # signal, grid, or both
   loop_interval_seconds: 60
   daily_summary_hour: 20  # 8 PM
 
@@ -21,7 +22,7 @@ protected_assets:
 indicators:
   rsi:
     period: 14
-    oversold: 20     # very oversold = high conviction entries
+    oversold: 30     # was 20, loosened to trigger more often
     overbought: 70
   ema:
     fast: 12
@@ -31,10 +32,10 @@ indicators:
     std_dev: 2
   volume:
     period: 20
-    multiplier: 2.5  # require 2.5x average volume
+    multiplier: 1.5  # was 2.5, loosened for more signals
 
 strategy:
-  min_confirmations: 3  # minimum indicators agreeing for a signal
+  min_confirmations: 2  # was 3, loosened for more trades in paper mode
   candle_granularity: ONE_HOUR  # Coinbase granularity
   lookback_candles: 100  # candles to fetch for indicator calculation
 
@@ -47,6 +48,18 @@ risk:
   take_profit_pct: 0.08         # 8% take-profit (let big winners run)
   trailing_stop_activate_pct: 0.02  # activate trailing at 2% gain
   trailing_stop_distance_pct: 0.008 # trail by 0.8% (lock in gains tight)
+
+grid:
+  enabled: true
+  pairs:
+    - ETH-USD
+    - SOL-USD
+  grid_capital_usd: 150.0           # capital allocated to grid trading
+  num_levels: 8                      # was 5, wider grid coverage
+  grid_spacing_pct: 0.015            # was 1%, now 1.5% for wider range
+  order_size_usd: 10.0               # USD per grid order
+  rebalance_threshold_pct: 0.08      # was 5%, now 8% to avoid constant rebalancing
+  check_interval_seconds: 30         # how often to check for fills
 
 capital:
   initial_usd: 300.0  # starting allocation for trading

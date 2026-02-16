@@ -4,7 +4,7 @@
 # Run this in a terminal that has Automation permission for Messages.app.
 # Usage: ./scripts/sms_sender.sh
 
-QUEUE="/Users/claude/projects/crypto-trader/data/sms_queue.txt"
+QUEUE="/Users/claude/projects/investment/crypto-trader/data/sms_queue.txt"
 PHONE="+19197498832"
 DIGITS="9197498832"
 

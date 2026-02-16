@@ -24,6 +24,7 @@ from src.portfolio.protected_assets import ProtectedAssets
 from src.risk.position_sizer import PositionSizer
 from src.risk.risk_manager import RiskManager
 from src.risk.stop_loss import StopLossManager
+from src.strategy.grid_strategy import GridStrategy
 from src.strategy.indicators import add_all_indicators
 from src.strategy.signal_generator import SignalGenerator, SignalType
 from src.utils.logger import setup_logger
@@ -62,9 +63,26 @@ class TradingBot:
         _, Session = init_db(db_path)
         self.repo = Repository(Session)
 
+        # Grid strategy
+        self.strategy_mode = self.config["bot"].get("strategy", "signal")
+        self.grid_strategy = None
+        self.grid_capital = 0.0
+        self.grid_pnl_total = 0.0
+
+        grid_cfg = self.config.get("grid", {})
+        if self.strategy_mode in ("grid", "both") and grid_cfg.get("enabled", False):
+            self.grid_strategy = GridStrategy(self.config)
+            self.grid_capital = grid_cfg.get("grid_capital_usd", 150.0)
+            # Reduce signal capital if running both strategies
+            if self.strategy_mode == "both":
+                self.portfolio.capital -= self.grid_capital
+                self.portfolio.initial_capital -= self.grid_capital
+            log.info(f"Grid trading enabled: ${self.grid_capital:.2f} across {grid_cfg.get('pairs', [])}")
+
         self.trading_pairs = self.config["trading_pairs"]
         self.running = True
 
+        log.info(f"Strategy mode: {self.strategy_mode}")
         log.info(f"Trading pairs: {self.trading_pairs}")
         log.info(f"Protected assets: {self.config.get('protected_assets', [])}")
 
@@ -76,10 +94,13 @@ class TradingBot:
         log.info(f"  Capital: ${self.portfolio.capital:.2f}")
         log.info("=" * 60)
 
+        grid_info = ""
+        if self.grid_strategy:
+            grid_info = f"\nGrid: ${self.grid_capital:.2f} on {len(self.grid_strategy.pairs)} pairs"
         self.sms.send(
-            f"Bot started ({self.config['bot']['mode']} mode)\n"
-            f"Capital: ${self.portfolio.capital:.2f}\n"
-            f"Pairs: {len(self.trading_pairs)}"
+            f"Bot started ({self.config['bot']['mode']} mode, {self.strategy_mode})\n"
+            f"Signal capital: ${self.portfolio.capital:.2f}\n"
+            f"Pairs: {len(self.trading_pairs)}{grid_info}"
         )
 
         # Schedule daily summary
@@ -106,12 +127,15 @@ class TradingBot:
 
     def _tick(self):
         """One iteration of the main loop."""
-        # 1. Check stop-losses on open positions
-        self._check_exits()
+        # 1. Signal strategy: check exits and entries
+        if self.strategy_mode in ("signal", "both"):
+            self._check_exits()
+            if not self.risk_mgr.is_paused:
+                self._check_entries()
 
-        # 2. Look for new entry signals
-        if not self.risk_mgr.is_paused:
-            self._check_entries()
+        # 2. Grid strategy: check fills and manage grid
+        if self.grid_strategy:
+            self._grid_tick()
 
     def _check_exits(self):
         """Check all open positions for exit conditions."""
@@ -233,6 +257,149 @@ class TradingBot:
                     product_id, closed.pnl, closed.pnl_pct, exit_reason
                 )
 
+    # ── Grid trading ────────────────────────────────────────────────
+
+    def _grid_tick(self):
+        """One iteration of the grid strategy loop."""
+        for product_id in self.grid_strategy.pairs:
+            try:
+                # Check protected assets
+                if self.protected.is_protected(product_id):
+                    continue
+
+                price = self.market_data.get_current_price(product_id)
+
+                # Initialize grid if not yet created or needs rebalance
+                if self.grid_strategy.needs_rebalance(product_id, price):
+                    self._grid_rebalance(product_id, price)
+
+                # Place any pending orders
+                pending = self.grid_strategy.get_pending_levels(product_id)
+                for level in pending:
+                    self._grid_place_order(product_id, level)
+
+                # In paper mode, check for simulated fills using recent candle range
+                if self.config["bot"]["mode"] == "paper":
+                    self._grid_check_paper_fills(product_id, price)
+
+                # In live mode, check order status via API
+                else:
+                    self._grid_check_live_fills(product_id)
+
+            except Exception as e:
+                log.error(f"Grid tick error for {product_id}: {e}")
+
+    def _grid_rebalance(self, product_id: str, current_price: float):
+        """Re-center the grid around the current price."""
+        preserved_pnl = self.grid_strategy.clear_grid(product_id)
+        self.grid_pnl_total += preserved_pnl
+
+        # Cancel existing exchange orders for this pair
+        if self.config["bot"]["mode"] != "paper":
+            open_orders = self.repo.get_open_grid_orders(product_id)
+            order_ids = [o.order_id for o in open_orders if o.order_id]
+            if order_ids:
+                try:
+                    self.client.cancel_orders(order_ids)
+                except Exception as e:
+                    log.error(f"Failed to cancel grid orders for {product_id}: {e}")
+        self.repo.cancel_grid_orders(product_id)
+
+        # Create new grid
+        self.grid_strategy.initialize_grid(product_id, current_price)
+        log.info(f"Grid rebalanced for {product_id} at ${current_price:.4f}")
+
+    def _grid_place_order(self, product_id: str, level):
+        """Place a single grid order."""
+        result = None
+        if level.side == "BUY":
+            result = self.executor.limit_buy(product_id, level.base_size, level.price)
+        else:
+            result = self.executor.limit_sell(product_id, level.base_size, level.price)
+
+        if result:
+            self.grid_strategy.mark_level_open(product_id, level.index, result.order_id)
+            self.repo.save_grid_order(
+                product_id=product_id,
+                side=level.side,
+                level_price=level.price,
+                base_size=level.base_size,
+                order_id=result.order_id,
+                grid_center=self.grid_strategy.grids[product_id].center_price,
+                level_index=level.index,
+                paper=result.paper,
+            )
+
+    def _grid_check_paper_fills(self, product_id: str, current_price: float):
+        """Check for paper fills using current price as both high and low approximation."""
+        # Use current tick price — fills if price crosses a level
+        filled = self.grid_strategy.check_fills_paper(
+            product_id, current_price, low=current_price, high=current_price
+        )
+
+        for level in filled:
+            pnl = 0.0
+            if level.side == "SELL":
+                buy_price = level.price * (1 - self.grid_strategy.spacing_pct)
+                pnl = level.base_size * (level.price - buy_price)
+
+            self.repo.fill_grid_order(level.order_id, current_price, pnl)
+
+            # Create the opposite order
+            new_level = self.grid_strategy.handle_fill(product_id, level)
+            if new_level:
+                self._grid_place_order(product_id, new_level)
+
+            # SMS for fills
+            self.sms.send(
+                f"GRID {level.side} FILLED {product_id}\n"
+                f"Price: ${level.price:,.4f}\n"
+                f"Size: {level.base_size:.8f}" +
+                (f"\nP&L: +${pnl:.4f}" if pnl > 0 else "")
+            )
+
+    def _grid_check_live_fills(self, product_id: str):
+        """Check live order fills via the Coinbase API."""
+        state = self.grid_strategy.grids.get(product_id)
+        if not state:
+            return
+
+        for idx, level in list(state.levels.items()):
+            if level.status != "open" or not level.order_id:
+                continue
+
+            try:
+                order_info = self.client.get_order(level.order_id)
+                status = order_info.get("status", "")
+
+                if status in ("FILLED", "COMPLETED"):
+                    level.status = "filled"
+                    fill_price = float(order_info.get("average_filled_price", level.price))
+                    pnl = 0.0
+
+                    if level.side == "SELL":
+                        buy_price = level.price * (1 - self.grid_strategy.spacing_pct)
+                        pnl = level.base_size * (fill_price - buy_price)
+                        state.total_sells_filled += 1
+                    else:
+                        state.total_buys_filled += 1
+
+                    self.repo.fill_grid_order(level.order_id, fill_price, pnl)
+
+                    new_level = self.grid_strategy.handle_fill(product_id, level)
+                    if new_level:
+                        self._grid_place_order(product_id, new_level)
+
+                    self.sms.send(
+                        f"GRID {level.side} FILLED {product_id}\n"
+                        f"Price: ${fill_price:,.4f}\n"
+                        f"Size: {level.base_size:.8f}" +
+                        (f"\nP&L: +${pnl:.4f}" if pnl > 0 else "")
+                    )
+
+            except Exception as e:
+                log.error(f"Grid order check failed for {level.order_id}: {e}")
+
     def _daily_summary(self):
         """Send daily performance summary."""
         try:
@@ -244,6 +411,17 @@ class TradingBot:
                     pass
 
             summary = self.portfolio.summary(prices)
+
+            # Add grid stats if grid trading is active
+            if self.grid_strategy:
+                grid_pnl = self.grid_pnl_total
+                for pid in self.grid_strategy.pairs:
+                    gs = self.grid_strategy.get_grid_summary(pid)
+                    if gs:
+                        grid_pnl += gs.get("realized_pnl", 0)
+                summary["grid_pnl"] = round(grid_pnl, 4)
+                summary["grid_pairs"] = len(self.grid_strategy.pairs)
+
             self.sms.daily_summary(summary)
             self.repo.save_daily_performance(str(date.today()), summary)
             log.info(f"Daily summary: {summary}")

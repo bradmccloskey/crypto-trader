@@ -37,6 +37,18 @@ class OrderExecutor:
         self._paper_id_counter = 0
         log.info(f"OrderExecutor initialized in {mode} mode")
 
+    def limit_buy(self, product_id: str, base_size: float, limit_price: float) -> OrderResult:
+        """Place a limit buy order at a specific price."""
+        if self.mode == "paper":
+            return self._paper_limit_buy(product_id, base_size, limit_price)
+        return self._live_limit_buy(product_id, base_size, limit_price)
+
+    def limit_sell(self, product_id: str, base_size: float, limit_price: float) -> OrderResult:
+        """Place a limit sell order at a specific price."""
+        if self.mode == "paper":
+            return self._paper_limit_sell(product_id, base_size, limit_price)
+        return self._live_limit_sell(product_id, base_size, limit_price)
+
     def buy(self, product_id: str, usd_amount: float, current_price: float) -> OrderResult:
         """Buy asset using a USD amount."""
         if self.mode == "paper":
@@ -117,5 +129,71 @@ class OrderExecutor:
             size=base_size,
             quote_spent=quote,
             filled=True,
+            paper=False,
+        )
+
+    # ── Paper limit orders ────────────────────────────────────────────
+
+    def _paper_limit_buy(self, product_id: str, base_size: float, limit_price: float) -> OrderResult:
+        quote = base_size * limit_price
+        result = OrderResult(
+            order_id=self._next_paper_id(),
+            product_id=product_id,
+            side=OrderSide.BUY,
+            price=limit_price,
+            size=base_size,
+            quote_spent=quote,
+            filled=False,  # limit orders start unfilled
+            paper=True,
+        )
+        log.info(f"[PAPER] LIMIT BUY {product_id}: {base_size:.8f} @ ${limit_price:.4f}")
+        return result
+
+    def _paper_limit_sell(self, product_id: str, base_size: float, limit_price: float) -> OrderResult:
+        quote = base_size * limit_price
+        result = OrderResult(
+            order_id=self._next_paper_id(),
+            product_id=product_id,
+            side=OrderSide.SELL,
+            price=limit_price,
+            size=base_size,
+            quote_spent=quote,
+            filled=False,
+            paper=True,
+        )
+        log.info(f"[PAPER] LIMIT SELL {product_id}: {base_size:.8f} @ ${limit_price:.4f}")
+        return result
+
+    # ── Live limit orders ─────────────────────────────────────────────
+
+    def _live_limit_buy(self, product_id: str, base_size: float, limit_price: float) -> OrderResult:
+        resp = self.client.place_limit_buy(product_id, str(base_size), f"{limit_price:.2f}")
+        order_id = resp.get("order_id", resp.get("success_response", {}).get("order_id", ""))
+        quote = base_size * limit_price
+        log.info(f"[LIVE] LIMIT BUY {product_id} {base_size} @ ${limit_price:.2f} → order {order_id}")
+        return OrderResult(
+            order_id=order_id,
+            product_id=product_id,
+            side=OrderSide.BUY,
+            price=limit_price,
+            size=base_size,
+            quote_spent=quote,
+            filled=False,
+            paper=False,
+        )
+
+    def _live_limit_sell(self, product_id: str, base_size: float, limit_price: float) -> OrderResult:
+        resp = self.client.place_limit_sell(product_id, str(base_size), f"{limit_price:.2f}")
+        order_id = resp.get("order_id", resp.get("success_response", {}).get("order_id", ""))
+        quote = base_size * limit_price
+        log.info(f"[LIVE] LIMIT SELL {product_id} {base_size} @ ${limit_price:.2f} → order {order_id}")
+        return OrderResult(
+            order_id=order_id,
+            product_id=product_id,
+            side=OrderSide.SELL,
+            price=limit_price,
+            size=base_size,
+            quote_spent=quote,
+            filled=False,
             paper=False,
         )

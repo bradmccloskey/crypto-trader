@@ -124,6 +124,48 @@ class CoinbaseClient:
 
     # ── Orders ───────────────────────────────────────────────────────
 
+    def place_limit_buy(self, product_id: str, base_size: str, limit_price: str) -> dict:
+        """Place a limit buy order (GTC).
+
+        Args:
+            product_id: e.g. "ETH-USD"
+            base_size: Amount of base asset as string.
+            limit_price: Price at which to buy as string.
+        """
+        import uuid
+        safe_size = self.truncate_base_size(product_id, float(base_size))
+        safe_price = self.truncate_quote_size(product_id, float(limit_price))
+        client_order_id = str(uuid.uuid4())
+        resp = self.client.limit_order_gtc_buy(
+            client_order_id=client_order_id,
+            product_id=product_id,
+            base_size=safe_size,
+            limit_price=safe_price,
+        )
+        log.info(f"Limit buy {product_id} {safe_size} @ ${safe_price}: {resp}")
+        return resp if isinstance(resp, dict) else resp.__dict__
+
+    def place_limit_sell(self, product_id: str, base_size: str, limit_price: str) -> dict:
+        """Place a limit sell order (GTC).
+
+        Args:
+            product_id: e.g. "ETH-USD"
+            base_size: Amount of base asset as string.
+            limit_price: Price at which to sell as string.
+        """
+        import uuid
+        safe_size = self.truncate_base_size(product_id, float(base_size))
+        safe_price = self.truncate_quote_size(product_id, float(limit_price))
+        client_order_id = str(uuid.uuid4())
+        resp = self.client.limit_order_gtc_sell(
+            client_order_id=client_order_id,
+            product_id=product_id,
+            base_size=safe_size,
+            limit_price=safe_price,
+        )
+        log.info(f"Limit sell {product_id} {safe_size} @ ${safe_price}: {resp}")
+        return resp if isinstance(resp, dict) else resp.__dict__
+
     def place_market_buy(self, product_id: str, quote_size: str) -> dict:
         """Place a market buy order using USD amount.
 

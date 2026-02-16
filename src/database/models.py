@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 def _utcnow():
     return datetime.now(timezone.utc)
 
-from sqlalchemy import Column, DateTime, Float, Integer, String, create_engine
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
@@ -48,6 +48,25 @@ class SignalLog(Base):
     reasons = Column(String)  # JSON string
     acted_on = Column(Integer, default=0)  # 1 if a trade was placed
     created_at = Column(DateTime, default=_utcnow)
+
+
+class GridOrder(Base):
+    __tablename__ = "grid_orders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    product_id = Column(String, nullable=False, index=True)
+    side = Column(String, nullable=False)  # BUY or SELL
+    level_price = Column(Float, nullable=False)
+    base_size = Column(Float, nullable=False)
+    order_id = Column(String)  # exchange or paper order ID
+    status = Column(String, default="pending")  # pending, open, filled, cancelled
+    fill_price = Column(Float)
+    pnl = Column(Float)
+    grid_center = Column(Float)  # center price when grid was created
+    level_index = Column(Integer)  # grid level (-N to +N, 0 = center)
+    paper = Column(Integer, default=1)
+    created_at = Column(DateTime, default=_utcnow)
+    filled_at = Column(DateTime)
 
 
 class DailyPerformance(Base):

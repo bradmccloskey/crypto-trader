@@ -7,10 +7,10 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/claude/projects/crypto-trader/scripts/sms_sender.sh</string>
+        <string>/Users/claude/projects/investment/crypto-trader/scripts/sms_sender.sh</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/Users/claude/projects/crypto-trader</string>
+    <string>/Users/claude/projects/investment/crypto-trader</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
@@ -18,8 +18,8 @@
     <key>ThrottleInterval</key>
     <integer>10</integer>
     <key>StandardOutPath</key>
-    <string>/Users/claude/projects/crypto-trader/logs/sms-stdout.log</string>
+    <string>/Users/claude/projects/investment/crypto-trader/logs/sms-stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/claude/projects/crypto-trader/logs/sms-stderr.log</string>
+    <string>/Users/claude/projects/investment/crypto-trader/logs/sms-stderr.log</string>
 </dict>
 </plist>

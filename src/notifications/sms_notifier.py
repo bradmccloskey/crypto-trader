@@ -16,7 +16,7 @@ from src.utils.logger import setup_logger
 
 log = setup_logger("sms-notifier")
 
-MSG_QUEUE = "/Users/claude/projects/crypto-trader/data/sms_queue.txt"
+MSG_QUEUE = "/Users/claude/projects/investment/crypto-trader/data/sms_queue.txt"
 
 
 class SMSNotifier:
@@ -71,7 +71,7 @@ class SMSNotifier:
         )
 
     def daily_summary(self, summary: dict):
-        self.send(
+        msg = (
             f"DAILY SUMMARY\n"
             f"Capital: ${summary.get('capital', 0):.2f}\n"
             f"Trades: {summary.get('total_trades', 0)} "
@@ -79,6 +79,9 @@ class SMSNotifier:
             f"P&L: ${summary.get('realized_pnl', 0):.2f}\n"
             f"Win rate: {summary.get('win_rate', 0):.0%}"
         )
+        if "grid_pnl" in summary:
+            msg += f"\nGrid P&L: ${summary['grid_pnl']:.4f} ({summary.get('grid_pairs', 0)} pairs)"
+        self.send(msg)
 
     def error(self, message: str):
         self.send(f"BOT ERROR: {message}")
