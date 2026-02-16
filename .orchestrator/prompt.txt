@@ -1,0 +1,6 @@
+Review this project quickly. Check the current state: read README, recent git log (last 5 commits), any .planning/STATE.md or .planning/PROJECT.md, and the overall code state. Then write ONE of these signal files and stop:
+- .orchestrator/needs-input.json if the project needs human decisions
+- .orchestrator/completed.json if everything looks good/complete
+- .orchestrator/error.json if something is broken
+Example: Write '{"question":"...","timestamp":"..."}' to .orchestrator/needs-input.json
+Be quick — just assess and signal, don't start any actual work.

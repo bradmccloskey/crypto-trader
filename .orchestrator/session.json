@@ -1,0 +1,8 @@
+{
+  "projectName": "crypto-trader",
+  "sessionName": "orch-crypto-trader",
+  "startedAt": "2026-02-15T04:15:18.999Z",
+  "prompt": "Review this project quickly. Check the current state: read README, recent git log (last 5 commits), any .planning/STATE.md or .planning/PROJECT.md, and the overall code state. Then write ONE of these ",
+  "status": "stopped",
+  "stoppedAt": "2026-02-15T04:15:54.302Z"
+}

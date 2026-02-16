@@ -1,0 +1,26 @@
+{
+  "task": "Add grid trading strategy as a second strategy mode",
+  "priority": "high",
+  "source": "main-session",
+  "context": "The bot currently uses multi-indicator signal trading (RSI/EMA/BB/volume). Adding a grid trading strategy would provide a second, complementary income stream that works well in sideways/ranging markets where signal-based trading generates few entries.",
+  "description": "Implement a grid trading strategy that can run alongside or instead of the existing signal-based strategy. Grid trading places buy orders at fixed intervals below market price and sell orders at fixed intervals above, profiting from price oscillation without needing to predict direction.",
+  "requirements": [
+    "New strategy mode: 'grid' alongside existing 'signal' mode, selectable in config.yaml",
+    "Grid parameters in config: grid_spacing_pct (e.g. 1%), num_grid_levels (e.g. 10 above + 10 below), total_grid_capital (amount allocated to grid)",
+    "Grid logic: place limit buy orders at price * (1 - n*spacing) for n=1..levels, when a buy fills immediately place a sell at buy_price * (1 + spacing)",
+    "Rebalancing: when price moves significantly outside grid range, cancel and re-center the grid",
+    "Use existing risk management: daily loss limits, position limits, and protected assets still apply",
+    "Use existing SMS notifications: notify on grid trades, daily grid P&L summary",
+    "Best pairs for grid trading: stableish large-caps like ETH-USD, BTC-USD, SOL-USD in ranging conditions",
+    "Backtest support: extend backtest engine to simulate grid strategy on historical data",
+    "Paper mode support: test grid strategy with simulated orders before going live"
+  ],
+  "implementation_hints": [
+    "Coinbase Advanced Trade API supports limit orders natively — use for grid levels",
+    "Store grid state (active orders, grid center, grid range) in SQLite",
+    "Add a GridStrategy class in src/strategy/ parallel to SignalGenerator",
+    "Config could allow running both strategies simultaneously with separate capital allocation",
+    "Consider volatility-based grid spacing: wider grids in volatile markets, tighter in calm"
+  ],
+  "timestamp": "2026-02-14T20:00:00Z"
+}
