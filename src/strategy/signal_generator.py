@@ -86,9 +86,9 @@ class SignalGenerator:
             bb_range = bb_upper - bb_lower
             if bb_range > 0:
                 bb_pct = (price - bb_lower) / bb_range
-                if bb_pct < 0.30:
+                if bb_pct < 0.15:
                     buy_reasons.append(f"Price near lower BB ({bb_pct:.0%})")
-                elif bb_pct > 0.70:
+                elif bb_pct > 0.85:
                     sell_reasons.append(f"Price near upper BB ({bb_pct:.0%})")
 
         # 4. Volume confirmation

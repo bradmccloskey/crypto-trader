@@ -1,8 +1,8 @@
 # Crypto Trading Bot Configuration
 
 bot:
-  mode: paper  # paper or live
-  strategy: both  # signal, grid, or both
+  mode: live  # paper or live
+  strategy: grid  # signal, grid, or both
   loop_interval_seconds: 60
   daily_summary_hour: 20  # 8 PM
 
@@ -22,8 +22,8 @@ protected_assets:
 indicators:
   rsi:
     period: 14
-    oversold: 40     # aggressive for paper testing
-    overbought: 60
+    oversold: 30     # standard RSI levels
+    overbought: 70
   ema:
     fast: 12
     slow: 26
@@ -32,11 +32,11 @@ indicators:
     std_dev: 2
   volume:
     period: 20
-    multiplier: 1.0  # essentially always confirmed
+    multiplier: 1.5  # require above-average volume
 
 strategy:
-  min_confirmations: 1  # any single indicator triggers (paper test mode)
-  candle_granularity: FIVE_MINUTE  # faster signals for 24h test
+  min_confirmations: 2  # require 2+ indicators to agree
+  candle_granularity: FIVE_MINUTE
   lookback_candles: 100
 
 risk:
@@ -44,20 +44,20 @@ risk:
   max_open_positions: 3
   daily_loss_limit_pct: 0.05    # 5% of capital
   daily_loss_limit_usd: 15.0    # whichever hit first
-  stop_loss_pct: 0.015          # 1.5% stop-loss (cut losses fast)
-  take_profit_pct: 0.08         # 8% take-profit (let big winners run)
-  trailing_stop_activate_pct: 0.02  # activate trailing at 2% gain
-  trailing_stop_distance_pct: 0.008 # trail by 0.8% (lock in gains tight)
+  stop_loss_pct: 0.025          # 2.5% stop-loss (more room to breathe)
+  take_profit_pct: 0.06         # 6% take-profit
+  trailing_stop_activate_pct: 0.03  # activate trailing at 3% gain
+  trailing_stop_distance_pct: 0.012 # trail by 1.2%
 
 grid:
   enabled: true
   pairs:
     - ETH-USD
     - SOL-USD
-  grid_capital_usd: 150.0
-  num_levels: 12                     # more levels for tighter grid
-  grid_spacing_pct: 0.005            # 0.5% spacing — fills much more often
-  order_size_usd: 6.0                # smaller per order, more trades
+  grid_capital_usd: 300.0
+  num_levels: 10                     # 10 levels per side
+  grid_spacing_pct: 0.015            # 1.5% spacing — covers maker fees
+  order_size_usd: 12.0               # $12 per order
   rebalance_threshold_pct: 0.05      # rebalance at 5% drift
   check_interval_seconds: 30
 
