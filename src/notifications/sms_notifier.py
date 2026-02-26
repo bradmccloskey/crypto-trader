@@ -9,6 +9,7 @@ import os
 import subprocess
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 
@@ -17,6 +18,15 @@ from src.utils.logger import setup_logger
 log = setup_logger("sms-notifier")
 
 MSG_QUEUE = "/Users/claude/projects/investment/crypto-trader/data/sms_queue.txt"
+
+ET = timezone(timedelta(hours=-5))
+
+
+def _is_quiet_hours() -> bool:
+    """Check if current time is within quiet hours (10 PM - 7 AM ET)."""
+    now_et = datetime.now(ET)
+    hour = now_et.hour
+    return hour >= 22 or hour < 7
 
 
 class SMSNotifier:
@@ -30,9 +40,13 @@ class SMSNotifier:
             log.warning("SMS_PHONE_NUMBER not set — notifications disabled")
 
     def send(self, message: str):
-        """Queue an SMS for delivery. Non-blocking."""
+        """Queue an SMS for delivery. Non-blocking. Suppressed during quiet hours (10PM-7AM ET)."""
         if not self.phone:
             log.debug(f"SMS skipped (no phone): {message[:80]}")
+            return
+
+        if _is_quiet_hours():
+            log.info(f"SMS suppressed (quiet hours): {message[:80]}")
             return
 
         # Write to queue file for the helper to pick up
